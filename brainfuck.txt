@@ -1,0 +1,90 @@
+Brainfuck - part 1
+
+I'd knowledge of Brainfuck as an esoteric programming language way ago. It interest me from the beginning but had no real intentions on implementing it on my own.
+Recently I was hook by VM structures and implementation and so I quickly found my self borrowing information and conducting a deep research about the language... Which actually means reading Wikipedia's article:
+
+"Urban Müller created brainfuck in 1993 with the intention of designing a language which could be implemented with the smallest possible compiler, inspired by the 1024 byte compiler for the FALSE programming language." [1]
+
+The thing is that Brainfuck isn't a programming language on itself, IMHO. It's a Turing machine [2]. Duh. What I mean is that you're using the machine instruction set itself. Like writting directly with ix86 opcodes.
+Dunno if it can be properly called a language. But, fuck it, it doesn't really matter at all.
+
+Brainfuck only comprehends 8 instructions which manipulates the components of the machine in some way. Differently from the well known Intel machines there are no registers, stack, eflags etc. The machine is straight simple:
+A 30k working memory (called cells), an Instruction Pointer and a Data Pointer used to access individual elements of the cells.
+
+The working memory is 30k bytes (conventionally) and it's accessed only by bytes (that's the only way to access data in Brainfuck). From an implementatory point of view the cell is an array of bytes:
+	
+	C#
+	int[] cells = new int[30000];
+	
+	Assembly
+	cells	db 30000 dup(?)
+
+The Instruction Pointer is only alterated by two instructions otherwise it's just incrementing after each to point to the next one.
+Our implementation won't use any IP so you'll see how we'll deal with it.
+
+The Data Pointer is used as an index on the cell array to access elements of it. In some implementation of Brainfuck this DP is limited to the size of the cells (wrapping to the next valid range if it over/underflows the cells size). We won't take any considerations. Our Data Pointer looks as follow:
+	
+	C#
+	int dataptr	= 0;
+	
+	Assembly
+	mov		edi, offset cells	; We'll access the cells directly.
+
+All instructions of the machine, except two, works over the Data Pointer or the Cells pointed by it. Those instructions are:
+
+"+": This instruction works over the cell pointed by the Data Pointer. It takes the value stored at that cell and increments it one unit.
+	
+	C#
+	cells[dataptr]++;
+	
+	Assembly
+	inc		byte ptr [edi]		; Holy sh---
+
+"-": This is the opposite of the previous one:
+	C#
+	cells[dataptr]--;
+	
+	Assembly
+	dec		byte ptr [edi]
+	
+">": This instruction increment the value of the pointer, thus pointing to the next element of the cell:
+	
+	C#
+	dataptr++;
+
+	Assembly
+	inc		edi					; Straight simple lol
+
+"<": Nothing relevant to mention. The opposite.
+	C#
+	dataptr--;
+
+	Assembly
+	dec		edi
+
+
+",": This instruction takes an input from the user and write it to the cell pointed by the Data Pointer. The input is ussually a character from the Standard Input.
+	
+	C#
+	cells[dataptr] = System.Console.ReadLine();
+	
+	Assembly
+	invoke	ReadFile, hConsole, edi, 1, addr lpdwBytesRead, 0
+	
+".": As before this instruction is the opposite of the previous one and it just writtes to the Standard Output the byte at the Data Pointer.
+
+	C#
+	System.Console.Write(System.Convert.ToString(cells[dataptr]));
+	
+	Assembly
+	invoke	WriteFile, hConsole, edi, 1, addr lpdwBytesRead, 0
+	
+The following instructions manipulates the Instruction Pointer and are the only ones that can be used to break the flow of a program:
+
+"[": With this instruction the Brainfuck machine verifies the cell at Data Pointer and, if it's value is non-zero the next instruction following the current one is executed. Otherwize the next instruction to execute is the one after the end of the block, marked as "]". Work very similar to "jz" instruction.
+
+"]": This instruction jumps directly to the beginning of the block, "[". Similar to a "jmp" instruction.
+
+
+[1] - http://en.wikipedia.org/wiki/Brainfuck
+[2] - http://en.wikipedia.org/wiki/Turing_Machine
